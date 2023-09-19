@@ -50,6 +50,7 @@ def post_data():
     except Exception as e:
         log(f"ERROR:")
         log(str(e))
+        stat = 'idle'
         save_run(incremental, df, meta_vehiculos_tarifario)  # save logs and data to further reproduce output
         return (jsonify({"error": str(e)}), 400)
 
