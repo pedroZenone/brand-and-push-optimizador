@@ -14,12 +14,11 @@
 ## Pasos para correr por primera vez en la instancia.
 
 1- Cargar los secrets:
-scp secrets.env root@206.189.207.216:/root/secrets.env
+scp secrets.env root@IP_SERVIDOR:/root/secrets.env
 
-2- Entrar a la instancia: ssh root@206.189.207.216
+2- Entrar a la instancia: ssh root@IP_SERVIDOR
 
-3- Clonar el repo: git clone https://github.com/GaGoRa/brand-and-push-optimizador.git
-
+3- Clonar el repo: git clone https://github.com/pedroZenone/brand-and-push-optimizador.git
 4- Correr el script: 
 sudo /bin/bash ~/brand-and-push-optimizador/starter_scripts/iniate_server.sh
 
@@ -35,9 +34,18 @@ systemctl status systemd_app.service
 
 * Para correr una prueba con full carga: python3 test_carga.py
 
-* Para probar que esta funcionando: 
+* Para probar que esta funcionando:
+
+Para ver consultar status del proceso:
 ```
 import requests
 response = requests.get('http://IP_SERVIDOR:5501/status')
 response.json()
+```
+
+Para correr el modelo:
+```
+import requests
+response = requests.post('http://206.189.207.216:5501/post_data', json={"ids": [2766093,2766064]})
+print("Received response:", response.json())
 ```
