@@ -1,0 +1,9 @@
+[Unit]
+Description=My test service
+After=multi-user.target
+[Service]
+Type=simple
+Restart=always
+ExecStart=/bin/bash -c '/usr/bin/python3 /root/brand-and-push-optimizador/app.py'
+[Install]
+WantedBy=multi-user.target
