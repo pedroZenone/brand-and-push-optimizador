@@ -46,6 +46,6 @@ response.json()
 Para correr el modelo:
 ```
 import requests
-response = requests.post('http://206.189.207.216:5501/post_data', json={"ids": [2766093,2766064]})
+response = requests.post('http://IP_SERVIDOR:5501/post_data', json={"ids": [2766093,2766064]})
 print("Received response:", response.json())
 ```
