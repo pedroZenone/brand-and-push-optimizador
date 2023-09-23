@@ -42,6 +42,8 @@ def post_data():
         output_tercero, pending, incremental = global_optimizer(df_stage2, meta_vehiculos_tarifario, "Tercero",
                                                                 incremental)
         output = pd.concat([output_propio, output_tercero], axis=0)
+        output["id_run"] = incremental # Propio esta desfazado, piso con el id_run de Tercero
+
         insert_output(output) # save output in optimizer table
         save_run(incremental, df, meta_vehiculos_tarifario) # save logs and data to further reproduce output
 
