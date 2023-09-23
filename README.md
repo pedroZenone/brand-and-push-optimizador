@@ -8,7 +8,7 @@
 
 4- Se aplica algoritmo de optimizacion, cargando los retultados en la tabla optimizer del postgres productivo. Con la columna id_run referenciamos el ID de la corrida
 
-5- Se guarda en logs/id_run/ un txt con todo el proceso que uso el modelo para optimizar. En al carpta input_data/id_run y tracus_data/id_run se guardan los datos que se trajeron para que pueda haber repetibilidad del proceso
+5- Se guarda en logs/id_run/ un txt con todo el proceso que uso el modelo para optimizar. En al carpta input_data/id_run y trucks_data/id_run se guardan los datos que se trajeron para que pueda haber repetibilidad del proceso
 
 
 ## Pasos para correr por primera vez en la instancia.
@@ -19,7 +19,9 @@ scp secrets.env root@IP_SERVIDOR:/root/secrets.env
 2- Entrar a la instancia: ssh root@IP_SERVIDOR
 
 3- Clonar el repo: git clone https://github.com/pedroZenone/brand-and-push-optimizador.git
+
 4- Correr el script: 
+cd brand-and-push-optimizador
 sudo /bin/bash ~/brand-and-push-optimizador/starter_scripts/iniate_server.sh
 
 5- Ya esta corriendo el scripts!
@@ -31,6 +33,8 @@ journalctl -u systemd_app.service > app_logs.txt
 
 * Para ver si systemd lo tiene activo el proceso: 
 systemctl status systemd_app.service
+
+* Para reiniciar el servicion: sudo systemctl start systemd_app.service
 
 * Para correr una prueba con full carga: python3 test_carga.py
 
