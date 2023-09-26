@@ -1,4 +1,4 @@
-name: Upload docker image and update server
+name: update server code
 
 # trigger on all push events to main branch
 on:
@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  connect:
+  updateServer:
     runs-on: ubuntu-latest
     steps:
       - name: executing remote ssh commands using password
@@ -19,3 +19,6 @@ jobs:
           script: |
             cd ~/brand-and-push-optimizador
             git pull
+            sudo systemctl stop systemd_app.service
+            sudo systemctl restart systemd_app.service
+            sudo systemctl start systemd_app.service
