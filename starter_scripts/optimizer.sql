@@ -11,5 +11,9 @@ create table optimizer(
 	price_warn int,
 	precio_grupo decimal(19,4),
 	precio_vehiculo decimal(19,4),
-	propiedad varchar(10)
+	propiedad varchar(10),
+	sucursal varchar(100),
+	poblacion varchar(100),
+	volumen decimal(19,4),
+	peso decimal(19,4)
 )
