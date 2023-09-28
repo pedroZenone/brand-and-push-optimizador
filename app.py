@@ -42,7 +42,14 @@ def post_data():
         output_tercero, pending, incremental = global_optimizer(df_stage2, meta_vehiculos_tarifario, "Tercero",
                                                                 incremental)
         output = pd.concat([output_propio, output_tercero], axis=0)
-        output["id_run"] = incremental # Propio esta desfazado, piso con el id_run de Tercero
+        output["id_run"] = incremental-1 # Propio esta desfazado, piso con el id_run de Tercero
+
+        log(f" Optimized data: {output.shape[0]}")
+
+        if (output.shape[0] == 0):
+            incremental = 0
+        else:
+            incremental -= 1 # avoid overlap in next interation
 
         insert_output(output) # save output in optimizer table
         save_run(incremental, df, meta_vehiculos_tarifario) # save logs and data to further reproduce output
