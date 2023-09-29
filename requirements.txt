@@ -5,3 +5,4 @@ pymssql==2.2.7
 Flask==2.1.0
 psycopg2-binary==2.9.7
 python-dotenv==1.0.0
+SQLAlchemy==1.4.39

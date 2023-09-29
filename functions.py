@@ -10,6 +10,8 @@ import psycopg2
 import os
 import shutil
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "secrets.env"))  # load passwords
 
@@ -324,7 +326,7 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
                                           "precio_vehiculo": bag['bag_price'][0],
                                           "precio_grupo": total_price, "price_warn": price_rule,
                                           "grupo": f"GB{incremental}",
-                                          "propiedad": propiedad})
+                                          "propiedad": propiedad,"optimized":1})
 
                 log(f"ID track: {bag_id}")
 
@@ -353,7 +355,7 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
 
     return output, pd.DataFrame(pending_day, columns=df.columns), incremental
 
-def insert_output(output):
+def insert_output(output,cols):
     # PostgreSQL connection parameters
     db_params = {
         'host': os.getenv("post_host"),
@@ -367,14 +369,42 @@ def insert_output(output):
     cursor = conn.cursor()
 
     # itero por todas las rows y voy insertando de a una
-    col_name = ','.join(output_columns)
+    col_name = ','.join(cols)
     for ind, line in output.iterrows():
-        col_values = ','.join([str(output_table_format[x](line[x])) for x in output_columns])
+        col_values = ','.join([str(output_table_format[x](line[x])) for x in cols])
         cursor.execute(f"INSERT INTO optimizer ({col_name}) VALUES ({col_values})")
 
     conn.commit() # mando a insertar
     cursor.close()
     conn.close()
+
+def paralel_insert_output(output,cols):
+    if(output.shape[0] == 0):
+        return None
+
+    # Postregs conn
+    db_params = {
+        'host': os.getenv("post_host"),
+        'port': os.getenv("post_port"),
+        'database': os.getenv("post_database"),
+        'user': os.getenv("post_user"),
+        'password': os.getenv("post_password")
+    }
+
+    # Adapt column format
+    for c in cols:
+        output[c] = output[c].apply(lambda x: paralel_output_table_format[c](x))
+
+    # Create a SQLAlchemy engine
+    engine = create_engine(
+        f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}:{db_params["port"]}/{db_params["database"]}',poolclass=NullPool)
+    connection = engine.connect()
+    # Insert DataFrame in batches
+
+    chunksize = 1000  # Adjust as needed
+    output.to_sql('optimizer', connection, if_exists='append', index=False, chunksize=chunksize)
+    connection.close()
+    engine.dispose()
 
 def get_incremental():
     db_params = {
@@ -390,6 +420,7 @@ def get_incremental():
     # Siempre inserto en la tabla como GBxxx donde xxx es el numero incremental
     cursor.execute("SELECT MAX(CAST(SUBSTRING(grupo FROM 3) AS INTEGER)) as incremental, count(1) from optimizer")
     incremental = cursor.fetchall()
+    conn.close()
 
     if(len(incremental) > 0):
         if(incremental[0][1] == 0):
