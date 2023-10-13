@@ -4,7 +4,8 @@ P_VOLUMEN = 0.8
 P_PRICE = 0.1
 W_DELAY = 1  # Castigo para los que paquetes que van quedando viejos
 
-base_columns = ["id_run","id_item", "cod_prod", "folio", "numdpc","sucursal","poblacion","volumen","peso","optimized"]
+base_columns = ["id_run","id_item", "cod_prod", "folio", "numdpc","sucursal","poblacion","volumen","peso","optimized",
+                "descripcion"]
 output_columns = base_columns + ["placa", "id_vehiculo", "name_vehiculo", "price_warn", "grupo","precio_grupo",
                                  "precio_vehiculo", "propiedad","p_opt_weight","p_opt_vol"]
 output_table_format = {
@@ -17,6 +18,7 @@ output_table_format = {
     "placa": lambda x: "'" + str(x).replace("'",'"') + "'",
     "id_vehiculo": lambda x: "'" + str(x).replace("'",'"') + "'",
     "name_vehiculo": lambda x: "'" + str(x).replace("'",'"') + "'",
+    "descripcion": lambda x: "'" + str(x).replace("'",'"') + "'",
     "price_warn": lambda x: int(x),
     "precio_grupo": lambda x: round(x,2),
     "precio_vehiculo": lambda x: round(x,2),
@@ -40,6 +42,7 @@ paralel_output_table_format = {
     "placa": lambda x:  str(x),
     "id_vehiculo": lambda x:  str(x),
     "name_vehiculo": lambda x:  str(x),
+    "descripcion": lambda x:  str(x),
     "price_warn": lambda x: int(x),
     "precio_grupo": lambda x: round(x,2),
     "precio_vehiculo": lambda x: round(x,2),

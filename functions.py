@@ -193,7 +193,7 @@ def get_pedidos(ids = None):
 
     r = cursor.fetchall()
     pedidos = pd.DataFrame(r,
-                           columns=["id_item", "cod_prod", "prod_name", "folio", "cant_autorizada", "importe", "peso",
+                           columns=["id_item", "cod_prod", "descripcion", "folio", "cant_autorizada", "importe", "peso",
                                     "volumen", "numdpc", "sucursal", "poblacion", "id_poblacion", "distancia",
                                     "ruta_reparto", "id_ruta_reparto", "fecha"])
 
