@@ -1,6 +1,8 @@
 import pandas as pd
 from functions import *
 
+#ids = "'2866135','2866137','2866123','2866125','2865769','2858909','2864077','2798639','2798640','2798637','2798638','2866131','2866133'"
+
 if __name__ == '__main__':
 
     log("", first=True)
@@ -42,9 +44,9 @@ if __name__ == '__main__':
     save_run(incremental, df, meta_vehiculos_tarifario)  # save logs and data to further reproduce output
 
     if (incremental > 0):
-        paralel_insert_output(output, output_columns)  # save output in optimizer table
+        insert_output(output, output_columns)  # save output in optimizer table
         # Inserto el input que no se optimizo
         un_optimized = df.loc[~df.id_item.isin(output.id_item.values)]  # saco del input los que ya optimice
         un_optimized["id_run"] = incremental
         un_optimized["optimized"] = 0
-        paralel_insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos
+        insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos

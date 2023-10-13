@@ -316,16 +316,29 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
 
                 # Updateo los items listos y los pendientes
                 ready_iter = list(np.array(pending)[items_bag])
+
+                ready_price = sum([x["importe"] for x in ready_iter])
+                ready_weight = sum([x["peso"] for x in ready_iter])
+                ready_volume = sum([x["volumen"] for x in ready_iter])
+                price_rule = 1 if ready_price * P_PRICE < bag['bag_price'][
+                    0] else 0  # si el 10% del valor del pedido es inferior a la tarifa de translado alerto
+                volumen_percentage_load = ready_volume / bag['bag_volume'][0]
+                weight_percentage_load = ready_weight / bag['bag_weight'][0]
+
+                if((volumen_percentage_load < P_VOLUMEN) & (weight_percentage_load < P_WEIGHT) ): # Falsa alarma del optimizador?
+                    camion_iter += 1
+                    continue
+
                 metadata_vehiculos, bag_id = get_truck_id(metadata_vehiculos, bag,
                                                           propiedad)  # asigno un nombre al camion y saco la placa propia de la lista para no volver a usarla
-                price_rule = 1 if total_price * P_PRICE < bag['bag_price'][
-                    0] else 0  # si el 10% del valor del pedido es inferior a la tarifa de translado alerto
 
                 for i in range(len(ready_iter)):  # Le agrego la metadata del envio
                     ready_iter[i].update({"placa": bag_id, "id_vehiculo": bag["id"], "name_vehiculo": bag["name"],
                                           "precio_vehiculo": bag['bag_price'][0],
                                           "precio_grupo": total_price, "price_warn": price_rule,
                                           "grupo": f"GB{incremental}",
+                                          "p_opt_vol": 100 * volumen_percentage_load,
+                                          "p_opt_weight": 100 * weight_percentage_load,
                                           "propiedad": propiedad,"optimized":1})
 
                 log(f"ID track: {bag_id}")
@@ -424,7 +437,7 @@ def get_incremental():
 
     if(len(incremental) > 0):
         if(incremental[0][1] == 0):
-            return 0 # optimizer table is empty, empiezo de 0
+            return 1 # optimizer table is empty, empiezo de 1 porque siempre resto 1 al optimizar
         else:
             return int(incremental[0][0]) + 1 # siempre le agrego 1 al ultimo valor
     else:
