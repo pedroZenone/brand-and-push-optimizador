@@ -194,7 +194,7 @@ def get_pedidos(ids = None):
     r = cursor.fetchall()
     pedidos = pd.DataFrame(r,
                            columns=["id_item", "cod_prod", "descripcion", "folio", "cant_autorizada", "importe", "peso",
-                                    "volumen", "numdpc", "sucursal", "poblacion", "id_poblacion", "distancia",
+                                    "volumen", "numdpc", "sucursal", "poblacion", "poblacion_id", "distancia",
                                     "ruta_reparto", "id_ruta_reparto", "fecha"])
 
     pedidos["sucursal"] = pedidos["sucursal"].str.strip()
