@@ -50,3 +50,4 @@ if __name__ == '__main__':
         un_optimized["id_run"] = incremental
         un_optimized["optimized"] = 0
         insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos
+        print(incremental)

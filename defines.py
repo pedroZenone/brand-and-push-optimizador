@@ -33,7 +33,7 @@ output_table_format = {
     "propiedad": lambda x: "'" + str(x).replace("'",'"') + "'",
     "sucursal": lambda x: "'" + str(x).replace("'",'"') + "'",
     "poblacion": lambda x: "'" + str(x).replace("'",'"') + "'",
-    "poblacion_id": lambda x: "'" + str(x).replace("'",'"') + "'",
+    "poblacion_id": lambda x: 'NULL' if x == None else "'" + str(x).replace("'",'"') + "'",
     "volumen": lambda x: round(x,2),
     "peso": lambda x: round(x,2),
     "optimized": lambda x: int(x)
@@ -58,7 +58,7 @@ paralel_output_table_format = {
     "propiedad": lambda x: str(x),
     "sucursal": lambda x: str(x),
     "poblacion": lambda x: str(x),
-    "poblacion_id": lambda x: str(x),
+    "poblacion_id": lambda x: 'NULL' if x == None else str(x),
     "volumen": lambda x: round(x,2),
     "peso": lambda x: round(x,2),
     "optimized": lambda x: int(x)
