@@ -16,11 +16,11 @@ MAX_CLIENTES = {
     "Tercero": 3
 }
 
-str_lambda = 'NULL' if x == None else "'" + str(x).replace("'",'"') + "'"
+str_lambda = lambda x: 'NULL' if x == None else "'" + str(x).replace("'",'"') + "'"
 output_table_format = {
     "id_run": lambda x: int(x),
     "id_item": lambda x: int(x),
-    "cod_prod": lambda x: str_lambda,
+    "cod_prod": str_lambda,
     "folio": str_lambda,
     "numdpc": str_lambda,
     "grupo": str_lambda,
