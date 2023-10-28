@@ -1,8 +1,6 @@
 APP_PORT = 5501
 P_WEIGHT = 0.8
 P_VOLUMEN = 0.8
-OVER_WEIGHT = 1.2
-OVER_VOLUME = 1.2
 P_PRICE = 0.1
 W_DELAY = 1  # Castigo para los que paquetes que van quedando viejos
 

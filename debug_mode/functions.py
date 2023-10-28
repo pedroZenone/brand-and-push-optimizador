@@ -31,8 +31,8 @@ def optimize(data, bag):
 
     # Knapsack max Constraint
     for j in data['bags']:
-        solver.Add(sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= data['bag_weight'][j]*OVER_WEIGHT)
-        solver.Add(sum(x[(i, j)] * data['volume'][i] for i in data['items']) <= data['bag_volume'][j]*OVER_VOLUME)
+        solver.Add(sum(x[(i, j)] * data['weights'][i] for i in data['items']) <= data['bag_weight'][j])
+        solver.Add(sum(x[(i, j)] * data['volume'][i] for i in data['items']) <= data['bag_volume'][j])
         # solver.Add(sum(x[(i,j)]*data['price'][i] for i in data['items'])*P_PRICE >= data['bag_price'][j])
 
     # Create binary variables to represent the conditions
