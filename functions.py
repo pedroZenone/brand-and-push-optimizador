@@ -383,7 +383,7 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
     else:
         output = pd.DataFrame([], columns=output_columns)
 
-    pending_day = df.loc[~df_ruta.id_item.isin([x["id_item"] for x in ready])] # excluyo lo optimizado
+    pending_day = df.loc[~df.id_item.isin([x["id_item"] for x in ready])] # excluyo lo optimizado
     return output, pd.DataFrame(pending_day, columns=df.columns), incremental
 
 def insert_output(output,cols):
