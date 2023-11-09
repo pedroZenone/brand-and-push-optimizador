@@ -17,6 +17,8 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "secrets.env")) 
 
 def optimize(data, bag):
     solver = pywraplp.Solver.CreateSolver('SCIP')
+    #solver.SetSolverSpecificParametersAsString('presolving/maxrounds', '0')
+    
     data.update(bag)  # se lo apendeo al diccionario
 
     # Prepare solver matrix
@@ -51,7 +53,7 @@ def optimize(data, bag):
             sum(x[(i, j)] * data['volume'][i] for i in data['items']) >= limit_v - limit_v * (1 - use_condition1[j]))
         limit_w = data['bag_weight'][j] * P_WEIGHT
         solver.Add(
-            sum(x[(i, j)] * data['weights'][i] for i in data['items']) >= limit_w - limit_w * (1 - use_condition1[j]))
+            sum(x[(i, j)] * data['weights'][i] for i in data['items']) >= limit_w - limit_w * (1 - use_condition2[j]))
 
     # Add a constraint that ensures at least one condition is satisfied for each bag
     for j in data['bags']:
@@ -77,20 +79,27 @@ def optimize(data, bag):
     return l_[0]  # This is one bag problem
 
 
-def generate_item_data(raw_data):
+def generate_item_data(raw_data,clients_order):
     data = {}
-    data['values'] = [1 + (datetime.today() - pd.to_datetime(x["fecha"])).days * W_DELAY for x in raw_data]
+    
+    # Aplico un ponderador en base a la distancia para que si hay dos paquetes iguales de fierentes sucursales, eliga la mas lejana
+    sucursales = [x["numdpc"] for x in raw_data]
+    ponderador = {j:1+(x/100) for x,j in zip(
+        [i for i,x in reversed(list(enumerate(clients_order)))],clients_order)} # Hago un rank y luego armo un dict de mapeo sucursal - rank   
+    data['values'] = [ponderador[x] for x in sucursales]
+    #data['values'] = [1 + (datetime.today() - pd.to_datetime(x["fecha"])).days * W_DELAY for x in raw_data]
+    
     data['weights'] = [x["peso"] for x in raw_data]
     data['volume'] = [x["volumen"] for x in raw_data]
     data['price'] = [x["importe"] for x in raw_data]
 
     data['items'] = list(range(len(raw_data)))
     data['num_items'] = len(raw_data)
-
+    
     return data
 
 
-def get_available_truck(metadata, poblacion, volumen, weight, n, propiedad):
+def get_available_truck(metadata, poblacion, volumen, weight, truck, propiedad):
     # Saco duplicados por si tengo repetidos los coches
     metadata = metadata.drop_duplicates(subset=["tipo_vehiculo", "poblacion"])
     # Me traigo todas las poblaciones que venimos relevando en la ruta de reparto
@@ -112,15 +121,16 @@ def get_available_truck(metadata, poblacion, volumen, weight, n, propiedad):
     # solo me quedo con los vehiculos que estan disponibles en todos los puntos de la ruta
     metadata = metadata.loc[metadata.poblacion == (len(poblacion) - puntos_intermedios)]
 
-    posibles_camiones = metadata[(metadata.capacidad_peso * P_WEIGHT <= weight) |
-                                 (metadata.capacidad_volumen * P_VOLUMEN <= volumen)]
-    # Si no encuentro soluciones. Devuelvo un dataframes con los camiones posibles, si estoy pidiendo el cambion
-    # numero n pero la cantidad de camiones N < n entonces aborto
-    if (posibles_camiones.shape[0] <= n):
+    posibles_camiones = metadata[((metadata.capacidad_peso * P_WEIGHT <= weight) |
+                                 (metadata.capacidad_volumen * P_VOLUMEN <= volumen)
+                                 ) & (metadata.tipo_vehiculo == truck)]
+    
+    # Si no encuentro soluciones
+    if (posibles_camiones.shape[0] == 0):
         return None
 
-    camion = posibles_camiones.sort_values(by="capacidad_peso", ascending=False).to_dict("records")[
-        n]  # me traigo el camion pero indexado por iteracion n
+    #camion = posibles_camiones.sort_values(by="capacidad_peso", ascending=False).to_dict("records")[n]  # me traigo el camion pero indexado por iteracion n
+    camion = posibles_camiones.to_dict("records")[0]
     # price = tarifas[(tarifas.POBLACION == poblacion) & (tarifas.TIPO_VEHICULO == camion["TIPO_VEHICULO"])].to_dict("records")[0]
 
     bag = {}
@@ -252,7 +262,7 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
 
     max_clientes = MAX_CLIENTES[propiedad]
     metadata_vehiculos = meta_vehiculos_tarifario.loc[meta_vehiculos_tarifario.propiedad == propiedad]
-
+    
     ready = []
     pending_day = []
 
@@ -261,6 +271,8 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
             metadata_vehiculos.poblacion.values)]  # Solo se trabajan con las localidades con disponibilidad
 
     for r in df.ruta_reparto.unique():
+        log(f"\n ***** Optimize ruta n°: {r} ******** \n")
+        
         df_ruta = df.loc[(df.ruta_reparto == r)]
 
         # Armo un mapeo de cliente a poblacion
@@ -270,94 +282,99 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
         for t in tmp.itertuples():
             client2pob.update({t[1]: t[2]})
 
-        clients = df_ruta.sort_values(by="distancia", ascending=False)["numdpc"].drop_duplicates().to_list()
-        client_ruta = []
+        for truck_type in truck_types:
+            log(f"++++++++ Iteracion {truck_type} ++++++++")
+            
+            clients = df_ruta.sort_values(by=["distancia","poblacion"], ascending=False)["numdpc"].drop_duplicates().to_list()
+            
+            # Voy a forzar tener una ventana de max_clientes al inicio
+            n = min(len(clients),max_clientes) - 1 # le resto 1 para despues agregarselo en el while
+            client_ruta = clients[0:n]
+            clients = clients[n:] # vacio clients. nunca puede estar vacia por el n-1
+            #client_ruta = []
+            
+            while (len(clients) > 0):
+                client_ruta += [clients.pop(0)]
+                # Para cada reparto, como maximo puede haber MAX_CLIENTES
+                if (len(client_ruta) > max_clientes):
+                    client_ruta.pop(0)
+    
+                pob_ruta = list(set([client2pob[x] for x in client_ruta]))  # poblaciones de los cliente seleccionados
+                log(f"++ Clients to optimize: {[id2sucursal[x] for x in client_ruta]} |  Poblaciones: {pob_ruta} ++")
+    
+                pending = [] # Voy a usar esto para no optimizar lo mismo en el for 50
+                
+                # Los items a ser procesados son los de los clientes que no fueron optimizados en otra iteracion
+                to_process = df_ruta.loc[(df_ruta.numdpc.isin(client_ruta)) & 
+                                         (~df_ruta.id_item.isin([x["id_item"] for x in ready]))]
+                pending = to_process.to_dict('records')
+    
+                ready_iter = []  # guardo en esta variable para identificar cuando resuelve un camion dentro del loop
+                for i in range(50):  # itero 50 veces por poner un numero grande
+                    # parseo la data para tenerla en el formato encesario para el opti
+                    data_to_optimize = generate_item_data(pending,client_ruta)  
+    
+                    total_volume = sum(data_to_optimize["volume"])
+                    total_weight = sum(data_to_optimize["weights"])
+                    total_price = sum(data_to_optimize["price"])
+                    
+                    if (i == 0):
+                        log(f"Trying to optimize products: {len(data_to_optimize['volume'])}, volume: {round(total_volume, 2)}, weight:{round(total_weight, 2)}, price: {round(total_price, 2)}")
+    
+                    # me fijo que camion tengo disponible
+                    bag = get_available_truck(metadata_vehiculos, pob_ruta, total_volume,
+                                              total_weight, truck_type, propiedad)
+    
+                    if (bag == None):  # si con el peso y volumen no se cumplen las condiciones minimas, termino de loopear
+                        log("No possible bag")
+                        break  # Ya no hay mas camiones para probar
+    
+                    items_bag = optimize(data_to_optimize, bag)  # optimizo en base al camion disponible
+                    log(f"Trying with bag: {bag['name']} and optimized: {len(items_bag)}")
+    
+                    if (len(items_bag) == 0):
+                        break # Si no encuentra solucion sigo acumulando sucursales
+    
+                    # Updateo los items listos y los pendientes
+                    ready_iter = list(np.array(pending)[items_bag])
+    
+                    ready_price = sum([x["importe"] for x in ready_iter])
+                    ready_weight = sum([x["peso"] for x in ready_iter])
+                    ready_volume = sum([x["volumen"] for x in ready_iter])
+                    price_rule = 1 if ready_price * P_PRICE < bag['bag_price'][
+                        0] else 0  # si el 10% del valor del pedido es inferior a la tarifa de translado alerto
+                    volumen_percentage_load = ready_volume / bag['bag_volume'][0]
+                    weight_percentage_load = ready_weight / bag['bag_weight'][0]
+    
+                    if((volumen_percentage_load < P_VOLUMEN) & (weight_percentage_load < P_WEIGHT) ): # Falsa alarma del optimizador?
+                        break
+    
+                    metadata_vehiculos, bag_id = get_truck_id(metadata_vehiculos, bag,
+                                                              propiedad)  # asigno un nombre al camion y saco la placa propia de la lista para no volver a usarla
+    
+                    for i in range(len(ready_iter)):  # Le agrego la metadata del envio
+                        ready_iter[i].update({"placa": bag_id, "id_vehiculo": bag["id"], "name_vehiculo": bag["name"],
+                                              "precio_vehiculo": bag['bag_price'][0],
+                                              "precio_grupo": total_price, "price_warn": price_rule,
+                                              "grupo": f"GB{incremental}",
+                                              "p_opt_vol": 100 * volumen_percentage_load,
+                                              "p_opt_weight": 100 * weight_percentage_load,
+                                              "propiedad": propiedad,"optimized":1})
+    
+                    log(f"ID track: {bag_id}")
+    
+                    incremental += 1
+                    # pending: los que me quedaron rezagados, del total que no estna en ready
+                    pending = list(np.array(pending)[[x for x in range(len(pending)) if x not in items_bag]])
+    
+                    if (len(ready_iter) > 0):
+                        log(f"pendings: {len(pending)}")
+    
+                    ready += ready_iter  # save interation
 
-        log(f"\n ***** Optimize ruta n°: {r} ******** \n")
-        while (len(clients) > 0):
-            client_ruta += [clients.pop(0)]
-            # Para cada reparto, como maximo puede haber MAX_CLIENTES
-            if (len(client_ruta) > max_clientes):
-                client_ruta.pop(0)
-
-            pob_ruta = list(set([client2pob[x] for x in client_ruta]))  # poblaciones de los cliente seleccionados
-            log(f"++ Clients to optimize: {[id2sucursal[x] for x in client_ruta]} |  Poblaciones: {pob_ruta} ++")
-
-            pending = []
-            camion_iter = 0
-            to_process = df_ruta.loc[(df_ruta.numdpc.isin(client_ruta))]
-            pending = to_process.to_dict('records')
-
-            ready_iter = []  # guardo en esta variable para identificar cuando resuelve un camion dentro del loop
-            for i in range(50):  # itero 50 veces por poner un numero grande
-                data_to_optimize = generate_item_data(
-                    pending)  # parseo la data para tenerla en el formato encesario para el opti
-
-                total_volume = sum(data_to_optimize["volume"])
-                total_weight = sum(data_to_optimize["weights"])
-                total_price = sum(data_to_optimize["price"])
-                if (camion_iter == 0):
-                    log(f"Trying to optimize products: {len(data_to_optimize['volume'])}, volume: {round(total_volume, 2)}, weight:{round(total_weight, 2)}, price: {round(total_price, 2)}")
-
-                bag = get_available_truck(metadata_vehiculos, pob_ruta, total_volume,
-                                          # me fijo que camion tengo disponible
-                                          total_weight, camion_iter, propiedad)
-
-                if (bag == None):  # si con el peso y volumen no se cumplen las condiciones minimas, termino de loopear
-                    log("No possible bag")
-                    break  # Ya no hay mas camiones para probar
-
-                items_bag = optimize(data_to_optimize, bag)  # optimizo en base al camion disponible
-                log(f"Trying with bag: {bag['name']} and optimized: {len(items_bag)}")
-
-                if (len(items_bag) == 0):
-                    camion_iter += 1  # Si no encuentra solucion pruebo con el siguiente camion para que no se queda iterando infinitamente
-                    continue
-
-                # Updateo los items listos y los pendientes
-                ready_iter = list(np.array(pending)[items_bag])
-
-                ready_price = sum([x["importe"] for x in ready_iter])
-                ready_weight = sum([x["peso"] for x in ready_iter])
-                ready_volume = sum([x["volumen"] for x in ready_iter])
-                price_rule = 1 if ready_price * P_PRICE < bag['bag_price'][
-                    0] else 0  # si el 10% del valor del pedido es inferior a la tarifa de translado alerto
-                volumen_percentage_load = ready_volume / bag['bag_volume'][0]
-                weight_percentage_load = ready_weight / bag['bag_weight'][0]
-
-                if((volumen_percentage_load < P_VOLUMEN) & (weight_percentage_load < P_WEIGHT) ): # Falsa alarma del optimizador?
-                    camion_iter += 1
-                    continue
-
-                metadata_vehiculos, bag_id = get_truck_id(metadata_vehiculos, bag,
-                                                          propiedad)  # asigno un nombre al camion y saco la placa propia de la lista para no volver a usarla
-
-                for i in range(len(ready_iter)):  # Le agrego la metadata del envio
-                    ready_iter[i].update({"placa": bag_id, "id_vehiculo": bag["id"], "name_vehiculo": bag["name"],
-                                          "precio_vehiculo": bag['bag_price'][0],
-                                          "precio_grupo": total_price, "price_warn": price_rule,
-                                          "grupo": f"GB{incremental}",
-                                          "p_opt_vol": 100 * volumen_percentage_load,
-                                          "p_opt_weight": 100 * weight_percentage_load,
-                                          "propiedad": propiedad,"optimized":1})
-
-                log(f"ID track: {bag_id}")
-
-                incremental += 1
-                # pending: los que me quedaron rezagados, del total que no estna en ready
-                pending = list(np.array(pending)[[x for x in range(len(pending)) if x not in items_bag]])
-
-                if (len(ready_iter) > 0):
-                    log(f"pendings: {len(pending)}")
-
-                ready += ready_iter  # save interation
-
-            pending_day += pending
-
-            if (
-                    len(ready_iter) > 0):  # Si encuentro solucion limpio las rutas posibles y empiezo a acumular con el siguiente destino
-                client_ruta = []
-                log("> Clean clients and start to acumulate again")
+            #if (len(ready_iter) > 0):  # Si encuentro solucion limpio las rutas posibles y empiezo a acumular con el siguiente destino
+            #    client_ruta = []
+            #    log("> Clean clients and start to acumulate again")
 
     if (len(ready) > 0):
         output = pd.DataFrame(ready)
@@ -366,6 +383,7 @@ def global_optimizer(df, meta_vehiculos_tarifario, propiedad, incremental):
     else:
         output = pd.DataFrame([], columns=output_columns)
 
+    pending_day = df.loc[~df_ruta.id_item.isin([x["id_item"] for x in ready])] # excluyo lo optimizado
     return output, pd.DataFrame(pending_day, columns=df.columns), incremental
 
 def insert_output(output,cols):

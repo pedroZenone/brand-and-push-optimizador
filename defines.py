@@ -6,6 +6,8 @@ OVER_VOLUME = 1.2
 P_PRICE = 0.1
 W_DELAY = 1  # Castigo para los que paquetes que van quedando viejos
 
+truck_types = ['TRAILER','TORTON', 'CAMIONETA']
+
 base_columns = ["id_run","id_item", "cod_prod", "folio", "numdpc","sucursal","poblacion","poblacion_id",
                 "volumen","peso","optimized", "descripcion"]
 output_columns = base_columns + ["placa", "id_vehiculo", "name_vehiculo", "price_warn", "grupo","precio_grupo",
