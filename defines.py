@@ -9,7 +9,8 @@ W_DELAY = 1  # Castigo para los que paquetes que van quedando viejos
 truck_types = ['TRAILER','TORTON', 'CAMIONETA']
 
 base_columns = ["id_run","id_item", "cod_prod", "folio", "numdpc","sucursal","poblacion","poblacion_id",
-                "volumen","peso","optimized", "descripcion"]
+                "volumen","peso","optimized", "descripcion","cant_autorizada"]
+
 output_columns = base_columns + ["placa", "id_vehiculo", "name_vehiculo", "price_warn", "grupo","precio_grupo",
                                  "precio_vehiculo", "propiedad","p_opt_weight","p_opt_vol"]
 
@@ -19,6 +20,7 @@ MAX_CLIENTES = {
 }
 
 str_lambda = lambda x: 'NULL' if x == None else "'" + str(x).replace("'",'"') + "'"
+
 output_table_format = {
     "id_run": lambda x: int(x),
     "id_item": lambda x: int(x),
@@ -41,7 +43,8 @@ output_table_format = {
     "poblacion_id": str_lambda,
     "volumen": lambda x: round(x,2),
     "peso": lambda x: round(x,2),
-    "optimized": lambda x: int(x)
+    "optimized": lambda x: int(x),
+    "cant_autorizada": lambda x: round(x,2)
 }
 
 str_lambda_paralel = lambda x: 'NULL' if x == None else str(x)
@@ -68,5 +71,6 @@ paralel_output_table_format = {
     "poblacion_id": str_lambda_paralel,
     "volumen": lambda x: round(x,2),
     "peso": lambda x: round(x,2),
-    "optimized": lambda x: int(x)
+    "optimized": lambda x: int(x),
+    "cant_autorizada": lambda x: round(x,2)
 }
