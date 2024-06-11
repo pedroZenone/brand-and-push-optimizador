@@ -237,6 +237,7 @@ def get_trucks():
         SELECT PLACAS,PROPIEDAD,ID as ID_VEHICULO,v.TIPO_VEHICULO,ID_POBLACION,v.POBLACION, TARIFA , DISTANCIA, 
             capacidadPeso, capacidadVolumen
         FROM dbo.vehiculos_disponibles v
+        WHERE disponible = 1
     """)
 
     r = cursor.fetchall()
