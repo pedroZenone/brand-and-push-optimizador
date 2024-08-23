@@ -477,6 +477,7 @@ def paralel_insert_output(output,cols):
 
     chunksize = 1000  # Adjust as needed
     output.to_sql('optimizer', connection, if_exists='append', index=False, chunksize=chunksize)
+    connection.invalidate()
     connection.close()
     engine.dispose()
 

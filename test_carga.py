@@ -1,15 +1,18 @@
 import pandas as pd
 from functions import *
 
-#ids = "'2866135','2866137','2866123','2866125','2865769','2858909','2864077','2798639','2798640','2798637','2798638','2866131','2866133'"
+#ids = "'3039901','3039908','3024785','3024786','3035897','3035896','3007688','3007674','3007670','3007683'"
 
 if __name__ == '__main__':
 
     log("", first=True)
 
     df = get_pedidos()  # filtro por los ids que me pasen
+    print("Returned pedidos")
     meta_vehiculos_tarifario = get_trucks()
+    print("Returned trucks")
     incremental = get_incremental()  # get las incremental id_run
+    print("Returned last incremental")
 
     if ((sum(df["peso"].isna()) + sum(df["volumen"].isna()) + sum(df["importe"].isna())) > 0):
         log(f'ALERTA! Dropeando registros {df.shape[0] - df[["peso", "volumen", "importe"]].dropna().shape[0]}')
@@ -44,10 +47,14 @@ if __name__ == '__main__':
     save_run(incremental, df, meta_vehiculos_tarifario)  # save logs and data to further reproduce output
 
     if (incremental > 0):
-        insert_output(output, output_columns)  # save output in optimizer table
+        paralel_insert_output(output, output_columns)  # save output in optimizer table
         # Inserto el input que no se optimizo
         un_optimized = df.loc[~df.id_item.isin(output.id_item.values)]  # saco del input los que ya optimice
         un_optimized["id_run"] = incremental
         un_optimized["optimized"] = 0
-        insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos
+        paralel_insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos
         print(incremental)
+
+    output.to_csv("test2.csv",index=False)
+    un_optimized.to_csv("test_unpotimized2.csv", index=False)
+
