@@ -147,9 +147,11 @@ def get_available_truck(metadata, poblacion, volumen, weight, truck, propiedad):
     return bag
 
 
-def log(x, first=False, printer=False, file_name="log.txt"):
+def log(x, first=False, printer=False, file_name="log.txt",time = False):
     file_path = os.path.dirname(__file__)
     x = str(x)
+    if(time): # anexo el timestamp
+        x = str(datetime.now()) + " - " + x
 
     if (first):
         with open(os.path.join(file_path,file_name), 'w') as f:

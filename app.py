@@ -16,10 +16,13 @@ def post_data():
         ids = ','.join([str(x) for x in data["ids"]])  # paso a string
 
         #### Fun start here
-        log("", first=True)
+        log("", first=True,time = True)
         df = get_pedidos(ids) # filtro por los ids que me pasen
+        log("Got Pedidos", time=True)
         meta_vehiculos_tarifario = get_trucks()
+        log("Got Vehiculos", time=True)
         incremental = get_incremental() # get las incremental id_run
+        log("Got Incremental", time=True)
 
         if ((sum(df["peso"].isna()) + sum(df["volumen"].isna()) + sum(df["importe"].isna())) > 0):
             log(f'ALERTA! Dropeando registros {df.shape[0] - df[["peso", "volumen", "importe"]].dropna().shape[0]}')
@@ -28,14 +31,14 @@ def post_data():
         df["fecha"] = pd.to_datetime(df["fecha"], infer_datetime_format=True)
         df["dia"] = pd.to_datetime(df["fecha"].dt.date, infer_datetime_format=True)
 
-        log(f" -------------------------------")
+        log(f" -------------------------------", time = True)
         log(f" Optimizando vehiculos Propios")
         log(f" -------------------------------")
 
         output_propio, pending, incremental = global_optimizer(df, meta_vehiculos_tarifario, "Propio", incremental)
         df_stage2 = df.loc[~df.id_item.isin(output_propio.id_item.values)]
 
-        log(f" -------------------------------")
+        log(f" -------------------------------",time = True)
         log(f" Optimizando vehiculos Terceros")
         log(f" -------------------------------")
 
@@ -44,24 +47,26 @@ def post_data():
         output = pd.concat([output_propio, output_tercero], axis=0)
         output["id_run"] = incremental-1 # Propio esta desfazado, piso con el id_run de Tercero
 
-        log(f" Optimized data: {output.shape[0]}")
+        log(f" Optimized data: {output.shape[0]}",time = True)
 
         if (output.shape[0] == 0):
             incremental = 0
         else:
             incremental -= 1 # avoid overlap in next interation
 
-        save_run(incremental, df, meta_vehiculos_tarifario) # save logs and data to further reproduce output
-
         if(incremental > 0):
             #insert_output(output,output_columns)  # save output in optimizer table
             bulk_insert(output,output_columns)
+            log(f" Output saved", time=True)
             # Inserto el input que no se optimizo
             un_optimized = df.loc[~df.id_item.isin(output.id_item.values)] # saco del input los que ya optimice
             un_optimized["id_run"] = incremental
             un_optimized["optimized"] = 0
             #insert_output(un_optimized[base_columns],base_columns) # los datos que no me interesan los dejo nulos
             bulk_insert(un_optimized[base_columns],base_columns)
+            log(f" Unoptimized saved", time=True)
+
+        save_run(incremental, df, meta_vehiculos_tarifario)  # save logs and data to further reproduce output
 
         stat = 'idle'
         return (jsonify({"incremental": incremental}), 200)

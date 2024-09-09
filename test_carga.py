@@ -40,7 +40,7 @@ if __name__ == '__main__':
     output = pd.concat([output_propio, output_tercero], axis=0)
     output["id_run"] = incremental - 1  # Propio esta desfazado, piso con el id_run de Tercero
 
-    log(f" Optimized data: {output.shape[0]}")
+    log(f" Optimized data: {output.shape[0]}",time=True)
 
     if (output.shape[0] == 0):
         incremental = 0
@@ -55,10 +55,6 @@ if __name__ == '__main__':
         bulk_insert(output, output_columns)
         print("--- %s seconds first bulk---" % (time.time() - start_time))
 
-        start_time = time.time()
-        insert_output(output, output_columns)
-        print("--- %s seconds first insert values---" % (time.time() - start_time))
-
         # Inserto el input que no se optimizo
         un_optimized = df.loc[~df.id_item.isin(output.id_item.values)]  # saco del input los que ya optimice
         un_optimized["id_run"] = incremental
@@ -67,11 +63,6 @@ if __name__ == '__main__':
         start_time = time.time()
         bulk_insert(un_optimized[base_columns], base_columns)
         print("--- %s seconds second bulk---" % (time.time() - start_time))
-
-        start_time = time.time()
-        insert_output(un_optimized[base_columns], base_columns)
-        print("--- %s seconds second insert values---" % (time.time() - start_time))
-        print(incremental)
 
     output.to_csv("test2.csv",index=False)
     un_optimized.to_csv("test_unpotimized2.csv", index=False)
