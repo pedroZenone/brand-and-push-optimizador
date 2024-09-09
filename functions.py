@@ -12,6 +12,7 @@ import shutil
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
+import psycopg2.extras as extras
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "secrets.env"))  # load passwords
 
@@ -505,6 +506,33 @@ def get_incremental():
             return int(incremental[0][0]) + 1 # siempre le agrego 1 al ultimo valor
     else:
         raise(Exception("Bad format in grupo column of optimizer table"))
+
+def bulk_insert(output,cols):
+    db_params = {
+        'host': os.getenv("post_host"),
+        'port': os.getenv("post_port"),
+        'database': os.getenv("post_database"),
+        'user': os.getenv("post_user"),
+        'password': os.getenv("post_password")
+    }
+
+    # Adapat data and
+    for c in cols:
+        output[c] = output[c].apply(lambda x: paralel_output_table_format[c](x))
+
+    tuples = [tuple(x) for x in output[cols].to_numpy()]
+    cols_ = ','.join(cols)
+
+    query = f"INSERT INTO optimizer({cols_}) VALUES %s"
+    conn = psycopg2.connect(**db_params)
+    cursor = conn.cursor()
+
+    extras.execute_values(cursor, query, tuples)
+    conn.commit()  # Commit the transaction
+
+    cursor.close()
+    conn.close()
+
 
 def save_run(incremental,input,trucks):
     file_path = os.path.dirname(__file__)

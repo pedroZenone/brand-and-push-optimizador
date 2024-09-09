@@ -55,13 +55,13 @@ def post_data():
 
         if(incremental > 0):
             #insert_output(output,output_columns)  # save output in optimizer table
-            paralel_insert_output(output,output_columns)
+            bulk_insert(output,output_columns)
             # Inserto el input que no se optimizo
             un_optimized = df.loc[~df.id_item.isin(output.id_item.values)] # saco del input los que ya optimice
             un_optimized["id_run"] = incremental
             un_optimized["optimized"] = 0
             #insert_output(un_optimized[base_columns],base_columns) # los datos que no me interesan los dejo nulos
-            paralel_insert_output(un_optimized[base_columns],base_columns)
+            bulk_insert(un_optimized[base_columns],base_columns)
 
         stat = 'idle'
         return (jsonify({"incremental": incremental}), 200)

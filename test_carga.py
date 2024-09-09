@@ -1,18 +1,21 @@
 import pandas as pd
 from functions import *
+import time
 
 #ids = "'3039901','3039908','3024785','3024786','3035897','3035896','3007688','3007674','3007670','3007683'"
 
 if __name__ == '__main__':
 
     log("", first=True)
-
+    start_time = time.time()
     df = get_pedidos()  # filtro por los ids que me pasen
-    print("Returned pedidos")
+    print("--- %s seconds Pedidos---" % (time.time() - start_time))
+    start_time = time.time()
     meta_vehiculos_tarifario = get_trucks()
-    print("Returned trucks")
+    print("--- %s seconds Trucks---" % (time.time() - start_time))
+    start_time = time.time()
     incremental = get_incremental()  # get las incremental id_run
-    print("Returned last incremental")
+    print("--- %s seconds get incremental---" % (time.time() - start_time))
 
     if ((sum(df["peso"].isna()) + sum(df["volumen"].isna()) + sum(df["importe"].isna())) > 0):
         log(f'ALERTA! Dropeando registros {df.shape[0] - df[["peso", "volumen", "importe"]].dropna().shape[0]}')
@@ -47,12 +50,27 @@ if __name__ == '__main__':
     save_run(incremental, df, meta_vehiculos_tarifario)  # save logs and data to further reproduce output
 
     if (incremental > 0):
-        paralel_insert_output(output, output_columns)  # save output in optimizer table
+        #paralel_insert_output(output, output_columns)  # save output in optimizer table
+        start_time = time.time()
+        bulk_insert(output, output_columns)
+        print("--- %s seconds first bulk---" % (time.time() - start_time))
+
+        start_time = time.time()
+        insert_output(output, output_columns)
+        print("--- %s seconds first insert values---" % (time.time() - start_time))
+
         # Inserto el input que no se optimizo
         un_optimized = df.loc[~df.id_item.isin(output.id_item.values)]  # saco del input los que ya optimice
         un_optimized["id_run"] = incremental
         un_optimized["optimized"] = 0
-        paralel_insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos
+        #paralel_insert_output(un_optimized[base_columns], base_columns)  # los datos que no me interesan los dejo nulos
+        start_time = time.time()
+        bulk_insert(un_optimized[base_columns], base_columns)
+        print("--- %s seconds second bulk---" % (time.time() - start_time))
+
+        start_time = time.time()
+        insert_output(un_optimized[base_columns], base_columns)
+        print("--- %s seconds second insert values---" % (time.time() - start_time))
         print(incremental)
 
     output.to_csv("test2.csv",index=False)
