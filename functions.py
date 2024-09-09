@@ -495,6 +495,7 @@ def get_incremental():
     # Siempre inserto en la tabla como GBxxx donde xxx es el numero incremental
     cursor.execute("SELECT MAX(CAST(SUBSTRING(grupo FROM 3) AS INTEGER)) as incremental, count(1) from optimizer")
     incremental = cursor.fetchall()
+    cursor.close()
     conn.close()
 
     if(len(incremental) > 0):
