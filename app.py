@@ -69,6 +69,7 @@ def post_data():
         save_run(incremental, df, meta_vehiculos_tarifario)  # save logs and data to further reproduce output
 
         stat = 'idle'
+        log(f" Return incremental", time=True)
         return (jsonify({"incremental": incremental}), 200)
     except Exception as e:
         log(f"ERROR:")
